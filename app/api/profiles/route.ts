@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
     const [profiles, countResult] = await Promise.all([
       sql`
-        SELECT sync_code, state_data, created_at, updated_at
+        SELECT sync_code, created_at, updated_at
         FROM sync_profiles
         ORDER BY updated_at DESC
         LIMIT ${limit} OFFSET ${offset}
@@ -22,21 +22,11 @@ export async function GET(request: Request) {
     const totalPages = Math.ceil(total / limit)
 
     return NextResponse.json({
-      profiles: profiles.map((p) => {
-        const stateData = p.state_data || {}
-        const settings = stateData.settings || {}
-        const icons = stateData.icons || []
-        return {
-          code: p.sync_code,
-          username: settings.username || "",
-          themeColor: settings.themeColor || "#6366f1",
-          profilePicture: settings.profilePicture || "",
-          iconCount: icons.length,
-          createdAt: p.created_at,
-          updatedAt: p.updated_at,
-        }
-      }),
-      total,
+      profiles: profiles.map((p) => ({
+        syncCode: p.sync_code,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      })),
       pagination: {
         page,
         limit,

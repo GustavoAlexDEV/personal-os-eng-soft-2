@@ -27,7 +27,6 @@ export function SettingsApp() {
     oldestProfile: { code: string; username: string; createdAt: string } | null
   } | null>(null)
   const [loadingStats, setLoadingStats] = useState(false)
-  const [deletingProfile, setDeletingProfile] = useState(false)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   const iconInputRef = useRef<HTMLInputElement>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
@@ -518,35 +517,6 @@ export function SettingsApp() {
               </div>
             )}
           </div>
-
-          {/* Deletar Perfil */}
-          {syncCode && (
-            <div className="space-y-3 border-t border-border pt-4">
-              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
-                <h4 className="font-medium text-sm text-destructive flex items-center gap-2">
-                  <TrashIcon className="h-4 w-4" />
-                  Deletar Perfil da Nuvem
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  Remove permanentemente seu perfil do servidor. Suas configuracoes locais serao mantidas.
-                </p>
-                <Button
-                  onClick={handleDeleteMyProfile}
-                  disabled={deletingProfile}
-                  variant="destructive"
-                  size="sm"
-                  className="w-full"
-                >
-                  {deletingProfile ? (
-                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <TrashIcon className="mr-2 h-4 w-4" />
-                  )}
-                  Deletar Meu Perfil
-                </Button>
-              </div>
-            </div>
-          )}
         </TabsContent>
 
         <TabsContent value="about" className="space-y-4 pt-4">
