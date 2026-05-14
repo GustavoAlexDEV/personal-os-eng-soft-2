@@ -18,7 +18,6 @@ import {
   UsersIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  TrashIcon,
 } from "lucide-react"
 
 interface RemoteProfile {
@@ -64,7 +63,6 @@ export function ProfileBrowser() {
   const [loadingList, setLoadingList] = useState(false)
   const [listPage, setListPage] = useState(1)
   const [totalProfiles, setTotalProfiles] = useState(0)
-  const [deleting, setDeleting] = useState<string | null>(null)
   const profilesPerPage = 10
 
   const fetchProfile = async () => {
@@ -108,29 +106,6 @@ export function ProfileBrowser() {
       setError(err.message || "Erro desconhecido")
     } finally {
       setLoadingList(false)
-    }
-  }
-
-  const handleDeleteProfile = async (profileCode: string) => {
-    const confirmed = confirm(
-      `Tem certeza que deseja deletar o perfil ${profileCode}?\n\nEsta acao nao pode ser desfeita!`
-    )
-    if (!confirmed) return
-
-    setDeleting(profileCode)
-    try {
-      const res = await fetch(`/api/sync/${profileCode}/delete`, { method: "DELETE" })
-      if (res.ok) {
-        // Recarrega a lista
-        await fetchProfileList(listPage)
-      } else {
-        const data = await res.json()
-        setError(data.error || "Erro ao deletar perfil")
-      }
-    } catch (err) {
-      setError("Erro de conexao ao deletar perfil")
-    } finally {
-      setDeleting(null)
     }
   }
 
@@ -546,19 +521,6 @@ export function ProfileBrowser() {
                     >
                       <SearchIcon className="h-3.5 w-3.5 mr-1" />
                       Ver
-                    </Button>
-                    <Button
-                      onClick={() => handleDeleteProfile(p.code)}
-                      disabled={deleting === p.code}
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      {deleting === p.code ? (
-                        <Loader2Icon className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <TrashIcon className="h-4 w-4" />
-                      )}
                     </Button>
                   </div>
                 </div>

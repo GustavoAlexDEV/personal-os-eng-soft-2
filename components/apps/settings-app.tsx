@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SaveIcon, UploadIcon, TrashIcon, UserIcon, CloudIcon, DownloadIcon, RefreshCwIcon, CopyIcon, CheckIcon, Loader2Icon, BarChart3Icon, UsersIcon, CalendarIcon } from "lucide-react"
+import { SaveIcon, UploadIcon, TrashIcon, UserIcon, CloudIcon, DownloadIcon, RefreshCwIcon, CopyIcon, CheckIcon, Loader2Icon, BarChart3Icon, UsersIcon, CalendarIcon, KeyIcon, ShuffleIcon } from "lucide-react"
 
 export function SettingsApp() {
-  const { settings, updateSettings, saveState, syncToCloud, loadFromCloud, updateCloud, syncCode, isSyncing } = useOS()
+  const { settings, updateSettings, saveState, syncToCloud, loadFromCloud, updateCloud, syncCode, isSyncing, clearSyncCode } = useOS()
   const [themeColor, setThemeColor] = useState(settings.themeColor)
   const [fontFamily, setFontFamily] = useState(settings.fontFamily)
   const [username, setUsername] = useState(settings.username)
@@ -19,6 +19,18 @@ export function SettingsApp() {
   const [importCode, setImportCode] = useState("")
   const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [deletingProfile, setDeletingProfile] = useState(false)
+  
+  // Estado para criacao de senha ao sincronizar
+  const [showPasswordSetup, setShowPasswordSetup] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [pendingSyncCode, setPendingSyncCode] = useState<string | null>(null)
+  
+  // Estado para deletar com senha
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [profileHasPassword, setProfileHasPassword] = useState(false)
+  
   const [stats, setStats] = useState<{
     totalProfiles: number
     profilesCreatedToday: number
@@ -31,14 +43,62 @@ export function SettingsApp() {
   const iconInputRef = useRef<HTMLInputElement>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
 
+  const generateRandomPassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
+    let password = ""
+    for (let i = 0; i < 8; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)]
+    }
+    return password
+  }
+
   const handleSyncToCloud = async () => {
     setSyncMessage(null)
     const code = await syncToCloud()
     if (code) {
-      setSyncMessage({ type: "success", text: `Salvo na nuvem! Seu codigo: ${code}` })
+      // Apos criar o perfil, pedir para definir senha
+      setPendingSyncCode(code)
+      setNewPassword("")
+      setShowPasswordSetup(true)
     } else {
       setSyncMessage({ type: "error", text: "Erro ao salvar na nuvem. Tente novamente." })
     }
+  }
+
+  const handleSetPassword = async () => {
+    if (!pendingSyncCode) return
+    
+    if (!newPassword.trim()) {
+      setSyncMessage({ type: "error", text: "Digite uma senha ou gere uma aleatoria." })
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/sync/${pendingSyncCode}/password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword.trim() }),
+      })
+
+      if (res.ok) {
+        setSyncMessage({ type: "success", text: `Perfil criado com sucesso! Codigo: ${pendingSyncCode}. Guarde sua senha: ${newPassword}` })
+        setShowPasswordSetup(false)
+        setPendingSyncCode(null)
+        setNewPassword("")
+      } else {
+        const data = await res.json()
+        setSyncMessage({ type: "error", text: data.error || "Erro ao definir senha." })
+      }
+    } catch (err) {
+      setSyncMessage({ type: "error", text: "Erro de conexao ao definir senha." })
+    }
+  }
+
+  const handleSkipPassword = () => {
+    setSyncMessage({ type: "success", text: `Perfil criado! Codigo: ${pendingSyncCode}. (Sem senha de protecao)` })
+    setShowPasswordSetup(false)
+    setPendingSyncCode(null)
+    setNewPassword("")
   }
 
   const handleLoadFromCloud = async () => {
@@ -89,31 +149,60 @@ export function SettingsApp() {
     }
   }
 
-  const handleDeleteMyProfile = async () => {
+  const handleInitiateDelete = async () => {
     if (!syncCode) {
       setSyncMessage({ type: "error", text: "Voce nao tem um perfil sincronizado para deletar." })
       return
     }
 
-    const confirmed = confirm(
-      "Tem certeza que deseja DELETAR seu perfil da nuvem?\n\n" +
-        "Isso ira remover permanentemente seus dados do servidor.\n" +
-        "Suas configuracoes locais serao mantidas.\n\n" +
-        "Esta acao nao pode ser desfeita!"
-    )
+    // Verifica se o perfil tem senha
+    try {
+      const res = await fetch(`/api/sync/${syncCode}/password`)
+      if (res.ok) {
+        const data = await res.json()
+        setProfileHasPassword(data.hasPassword)
+        setDeletePassword("")
+        setShowDeleteDialog(true)
+      } else {
+        setSyncMessage({ type: "error", text: "Erro ao verificar perfil." })
+      }
+    } catch (err) {
+      setSyncMessage({ type: "error", text: "Erro de conexao." })
+    }
+  }
 
-    if (!confirmed) return
+  const handleConfirmDelete = async () => {
+    if (!syncCode) return
+
+    if (profileHasPassword && !deletePassword.trim()) {
+      setSyncMessage({ type: "error", text: "Digite a senha para deletar o perfil." })
+      return
+    }
 
     setDeletingProfile(true)
     setSyncMessage(null)
 
     try {
-      const res = await fetch(`/api/sync/${syncCode}/delete`, { method: "DELETE" })
+      const res = await fetch(`/api/sync/${syncCode}/delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword.trim() || null }),
+      })
+      
       if (res.ok) {
-        setSyncMessage({ type: "success", text: "Perfil deletado da nuvem com sucesso!" })
+        setSyncMessage({ type: "success", text: "Perfil deletado da nuvem com sucesso! Voce pode sincronizar novamente quando quiser." })
+        setShowDeleteDialog(false)
+        setDeletePassword("")
+        // Limpa o codigo local para permitir ressincronizar
+        clearSyncCode()
       } else {
         const data = await res.json()
-        setSyncMessage({ type: "error", text: data.error || "Erro ao deletar perfil." })
+        if (data.requiresPassword) {
+          setSyncMessage({ type: "error", text: "Este perfil requer senha para ser deletado." })
+          setProfileHasPassword(true)
+        } else {
+          setSyncMessage({ type: "error", text: data.error || "Erro ao deletar perfil." })
+        }
       }
     } catch (err) {
       setSyncMessage({ type: "error", text: "Erro de conexao ao deletar perfil." })
@@ -385,7 +474,7 @@ export function SettingsApp() {
           </div>
         </TabsContent>
 
-        <TabsContent value="sync" className="space-y-6 pt-4">
+        <TabsContent value="sync" className="space-y-6 pt-4 overflow-y-auto max-h-[calc(100vh-250px)]">
           <div className="rounded-lg border border-border bg-muted/50 p-4 space-y-2">
             <div className="flex items-center gap-2">
               <CloudIcon className="h-5 w-5 text-primary" />
@@ -396,7 +485,93 @@ export function SettingsApp() {
             </p>
           </div>
 
-          {syncCode && (
+          {/* Dialog de configuracao de senha */}
+          {showPasswordSetup && (
+            <div className="rounded-lg border-2 border-primary bg-primary/5 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <KeyIcon className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold">Definir Senha de Protecao</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Defina uma senha para proteger seu perfil. Ela sera necessaria para deletar o perfil no futuro.
+              </p>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Digite uma senha"
+                    maxLength={20}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setNewPassword(generateRandomPassword())}
+                    title="Gerar senha aleatoria"
+                  >
+                    <ShuffleIcon className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Maximo 20 caracteres. Guarde esta senha!</p>
+                <div className="flex gap-2">
+                  <Button onClick={handleSetPassword} className="flex-1">
+                    <KeyIcon className="mr-2 h-4 w-4" />
+                    Definir Senha
+                  </Button>
+                  <Button variant="ghost" onClick={handleSkipPassword}>
+                    Pular
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Dialog de deletar com senha */}
+          {showDeleteDialog && (
+            <div className="rounded-lg border-2 border-destructive bg-destructive/5 p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <TrashIcon className="h-5 w-5 text-destructive" />
+                <h3 className="font-semibold text-destructive">Deletar Perfil</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Tem certeza que deseja deletar seu perfil da nuvem? Suas configuracoes locais serao mantidas e voce podera sincronizar novamente.
+              </p>
+              {profileHasPassword && (
+                <div className="space-y-2">
+                  <Label>Digite a senha do perfil:</Label>
+                  <Input
+                    type="password"
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    placeholder="Senha de protecao"
+                    maxLength={20}
+                  />
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={deletingProfile}
+                  className="flex-1"
+                >
+                  {deletingProfile ? (
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <TrashIcon className="mr-2 h-4 w-4" />
+                  )}
+                  Confirmar Exclusao
+                </Button>
+                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {syncCode && !showPasswordSetup && !showDeleteDialog && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
               <Label className="text-sm font-medium">Seu Codigo de Sincronizacao</Label>
               <div className="flex items-center gap-2">
@@ -411,40 +586,62 @@ export function SettingsApp() {
             </div>
           )}
 
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm">Salvar na Nuvem</h4>
-            {syncCode ? (
-              <Button onClick={handleUpdateCloud} disabled={isSyncing} className="w-full">
-                {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCwIcon className="mr-2 h-4 w-4" />}
-                Atualizar Dados na Nuvem
-              </Button>
-            ) : (
-              <Button onClick={handleSyncToCloud} disabled={isSyncing} className="w-full">
-                {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <CloudIcon className="mr-2 h-4 w-4" />}
-                Salvar na Nuvem (Gerar Codigo)
-              </Button>
-            )}
-          </div>
+          {!showPasswordSetup && !showDeleteDialog && (
+            <>
+              <div className="space-y-3">
+                <h4 className="font-medium text-sm">Salvar na Nuvem</h4>
+                {syncCode ? (
+                  <Button onClick={handleUpdateCloud} disabled={isSyncing} className="w-full">
+                    {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCwIcon className="mr-2 h-4 w-4" />}
+                    Atualizar Dados na Nuvem
+                  </Button>
+                ) : (
+                  <Button onClick={handleSyncToCloud} disabled={isSyncing} className="w-full">
+                    {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <CloudIcon className="mr-2 h-4 w-4" />}
+                    Salvar na Nuvem (Gerar Codigo)
+                  </Button>
+                )}
+              </div>
 
-          <div className="space-y-3 border-t border-border pt-4">
-            <h4 className="font-medium text-sm">Importar de Outro Navegador</h4>
-            <div className="flex gap-2">
-              <Input
-                value={importCode}
-                onChange={(e) => setImportCode(e.target.value.toUpperCase())}
-                placeholder="EX: A3B7K9"
-                maxLength={6}
-                className="font-mono text-center tracking-widest text-lg"
-              />
-              <Button onClick={handleLoadFromCloud} disabled={isSyncing || !importCode.trim()} variant="outline" className="shrink-0">
-                {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
-                Importar
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Digite o codigo de 6 caracteres gerado em outro navegador para carregar suas configuracoes.
-            </p>
-          </div>
+              <div className="space-y-3 border-t border-border pt-4">
+                <h4 className="font-medium text-sm">Importar de Outro Navegador</h4>
+                <div className="flex gap-2">
+                  <Input
+                    value={importCode}
+                    onChange={(e) => setImportCode(e.target.value.toUpperCase())}
+                    placeholder="EX: A3B7K9"
+                    maxLength={6}
+                    className="font-mono text-center tracking-widest text-lg"
+                  />
+                  <Button onClick={handleLoadFromCloud} disabled={isSyncing || !importCode.trim()} variant="outline" className="shrink-0">
+                    {isSyncing ? <Loader2Icon className="mr-2 h-4 w-4 animate-spin" /> : <DownloadIcon className="mr-2 h-4 w-4" />}
+                    Importar
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Digite o codigo de 6 caracteres gerado em outro navegador para carregar suas configuracoes.
+                </p>
+              </div>
+
+              {syncCode && (
+                <div className="space-y-3 border-t border-border pt-4">
+                  <h4 className="font-medium text-sm text-destructive">Zona de Perigo</h4>
+                  <Button
+                    variant="outline"
+                    onClick={handleInitiateDelete}
+                    disabled={deletingProfile}
+                    className="w-full border-destructive/50 text-destructive hover:bg-destructive/10"
+                  >
+                    <TrashIcon className="mr-2 h-4 w-4" />
+                    Deletar Perfil da Nuvem
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    Remove seus dados da nuvem. Voce podera sincronizar novamente depois.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
 
           {syncMessage && (
             <div

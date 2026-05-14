@@ -62,6 +62,7 @@ interface OSContextType {
   syncToCloud: () => Promise<string | null>
   loadFromCloud: (code: string) => Promise<boolean>
   updateCloud: () => Promise<boolean>
+  clearSyncCode: () => void
 }
 
 const OSContext = createContext<OSContextType | undefined>(undefined)
@@ -342,6 +343,11 @@ export function OSProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const clearSyncCode = () => {
+    setSyncCode(null)
+    localStorage.removeItem("personal-os-sync-code")
+  }
+
   return (
     <OSContext.Provider
       value={{
@@ -371,6 +377,7 @@ export function OSProvider({ children }: { children: ReactNode }) {
         syncToCloud,
         loadFromCloud,
         updateCloud,
+        clearSyncCode,
       }}
     >
       {children}
