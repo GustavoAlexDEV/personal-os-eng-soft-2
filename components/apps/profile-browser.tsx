@@ -15,6 +15,10 @@ import {
   CodeIcon,
   FileIcon,
   RefreshCwIcon,
+  UsersIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  TrashIcon,
 } from "lucide-react"
 
 interface RemoteProfile {
@@ -37,12 +41,31 @@ interface RemoteProfile {
   isWelcomeComplete: boolean
 }
 
+interface ProfileListItem {
+  code: string
+  username: string
+  themeColor: string
+  profilePicture: string
+  iconCount: number
+  createdAt: string
+  updatedAt: string
+}
+
 export function ProfileBrowser() {
   const [code, setCode] = useState("")
   const [profile, setProfile] = useState<RemoteProfile | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  
+  // Lista de perfis
+  const [viewMode, setViewMode] = useState<"search" | "list">("search")
+  const [profileList, setProfileList] = useState<ProfileListItem[]>([])
+  const [loadingList, setLoadingList] = useState(false)
+  const [listPage, setListPage] = useState(1)
+  const [totalProfiles, setTotalProfiles] = useState(0)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const profilesPerPage = 10
 
   const fetchProfile = async () => {
     const trimmed = code.trim().toUpperCase()
@@ -71,6 +94,72 @@ export function ProfileBrowser() {
     }
   }
 
+  const fetchProfileList = async (page: number = 1) => {
+    setLoadingList(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/profiles?page=${page}&limit=${profilesPerPage}`)
+      if (!res.ok) throw new Error("Erro ao carregar lista de perfis")
+      const data = await res.json()
+      setProfileList(data.profiles)
+      setTotalProfiles(data.total)
+      setListPage(page)
+    } catch (err: any) {
+      setError(err.message || "Erro desconhecido")
+    } finally {
+      setLoadingList(false)
+    }
+  }
+
+  const handleDeleteProfile = async (profileCode: string) => {
+    const confirmed = confirm(
+      `Tem certeza que deseja deletar o perfil ${profileCode}?\n\nEsta acao nao pode ser desfeita!`
+    )
+    if (!confirmed) return
+
+    setDeleting(profileCode)
+    try {
+      const res = await fetch(`/api/sync/${profileCode}/delete`, { method: "DELETE" })
+      if (res.ok) {
+        // Recarrega a lista
+        await fetchProfileList(listPage)
+      } else {
+        const data = await res.json()
+        setError(data.error || "Erro ao deletar perfil")
+      }
+    } catch (err) {
+      setError("Erro de conexao ao deletar perfil")
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleViewProfile = (profileCode: string) => {
+    setCode(profileCode)
+    setViewMode("search")
+    // Busca o perfil automaticamente
+    setTimeout(() => {
+      const trimmed = profileCode.toUpperCase()
+      setLoading(true)
+      setError(null)
+      setProfile(null)
+      fetch(`/api/sync/${trimmed}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.stateData) {
+            setProfile(data.stateData)
+            setUpdatedAt(data.updatedAt)
+          } else {
+            setError(data.error || "Perfil nao encontrado")
+          }
+        })
+        .catch(() => setError("Erro ao buscar perfil"))
+        .finally(() => setLoading(false))
+    }, 100)
+  }
+
+  const totalPages = Math.ceil(totalProfiles / profilesPerPage)
+
   const getIconTypeIcon = (type: string) => {
     switch (type) {
       case "social":
@@ -97,33 +186,58 @@ export function ProfileBrowser() {
 
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
-      {/* Search bar */}
-      <div className="border-b border-border bg-muted/30 px-4 py-3">
-        <div className="flex gap-2">
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="Digite o codigo (ex: A3B7K9)"
-            maxLength={6}
-            className="font-mono text-center tracking-widest text-base"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") fetchProfile()
-            }}
-          />
-          <Button onClick={fetchProfile} disabled={loading || !code.trim()} className="shrink-0">
-            {loading ? (
-              <Loader2Icon className="h-4 w-4 animate-spin" />
-            ) : (
-              <SearchIcon className="h-4 w-4" />
-            )}
-          </Button>
-          {profile && (
-            <Button onClick={fetchProfile} disabled={loading} variant="outline" size="icon" className="shrink-0" title="Recarregar">
-              <RefreshCwIcon className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
+      {/* Tabs de navegação */}
+      <div className="border-b border-border bg-muted/30 px-4 py-2 flex gap-2">
+        <Button
+          variant={viewMode === "search" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => setViewMode("search")}
+        >
+          <SearchIcon className="mr-2 h-4 w-4" />
+          Buscar
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => {
+            setViewMode("list")
+            if (profileList.length === 0) fetchProfileList(1)
+          }}
+        >
+          <UsersIcon className="mr-2 h-4 w-4" />
+          Todos os Perfis
+        </Button>
       </div>
+
+      {viewMode === "search" ? (
+        <>
+          {/* Search bar */}
+          <div className="border-b border-border bg-muted/30 px-4 py-3">
+            <div className="flex gap-2">
+              <Input
+                value={code}
+                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                placeholder="Digite o codigo (ex: A3B7K9)"
+                maxLength={6}
+                className="font-mono text-center tracking-widest text-base"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") fetchProfile()
+                }}
+              />
+              <Button onClick={fetchProfile} disabled={loading || !code.trim()} className="shrink-0">
+                {loading ? (
+                  <Loader2Icon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <SearchIcon className="h-4 w-4" />
+                )}
+              </Button>
+              {profile && (
+                <Button onClick={fetchProfile} disabled={loading} variant="outline" size="icon" className="shrink-0" title="Recarregar">
+                  <RefreshCwIcon className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
 
       {/* Content area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -329,6 +443,130 @@ export function ProfileBrowser() {
           </>
         )}
       </div>
+        </>
+      ) : (
+        /* Lista de todos os perfis */
+        <div className="flex-1 overflow-y-auto">
+          {/* Header com paginação */}
+          <div className="border-b border-border bg-muted/30 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {totalProfiles} perfis encontrados
+              </span>
+              <Button
+                onClick={() => fetchProfileList(listPage)}
+                disabled={loadingList}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <RefreshCwIcon className={`h-4 w-4 ${loadingList ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => fetchProfileList(listPage - 1)}
+                  disabled={loadingList || listPage <= 1}
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </Button>
+                <span className="text-sm">
+                  {listPage} / {totalPages}
+                </span>
+                <Button
+                  onClick={() => fetchProfileList(listPage + 1)}
+                  disabled={loadingList || listPage >= totalPages}
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Lista */}
+          <div className="p-4 space-y-2">
+            {error && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-700 dark:text-red-400">
+                {error}
+              </div>
+            )}
+
+            {loadingList && profileList.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : profileList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-3">
+                <UsersIcon className="h-12 w-12 opacity-30" />
+                <p>Nenhum perfil encontrado no banco de dados.</p>
+              </div>
+            ) : (
+              profileList.map((p) => (
+                <div
+                  key={p.code}
+                  className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 hover:bg-muted/50 transition-colors"
+                >
+                  {/* Avatar */}
+                  <div
+                    className="h-10 w-10 rounded-full border border-border overflow-hidden flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: p.themeColor || "#6366f1" }}
+                  >
+                    {p.profilePicture ? (
+                      <img src={p.profilePicture} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <UserIcon className="h-5 w-5 text-white/80" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm">{p.code}</span>
+                      <span className="text-sm truncate">{p.username || "Sem nome"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                      <span>{p.iconCount} icones</span>
+                      <span>Criado: {formatDate(p.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      onClick={() => handleViewProfile(p.code)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <SearchIcon className="h-3.5 w-3.5 mr-1" />
+                      Ver
+                    </Button>
+                    <Button
+                      onClick={() => handleDeleteProfile(p.code)}
+                      disabled={deleting === p.code}
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      {deleting === p.code ? (
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <TrashIcon className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SaveIcon, UploadIcon, TrashIcon, UserIcon, CloudIcon, DownloadIcon, RefreshCwIcon, CopyIcon, CheckIcon, Loader2Icon } from "lucide-react"
+import { SaveIcon, UploadIcon, TrashIcon, UserIcon, CloudIcon, DownloadIcon, RefreshCwIcon, CopyIcon, CheckIcon, Loader2Icon, BarChart3Icon, UsersIcon, CalendarIcon } from "lucide-react"
 
 export function SettingsApp() {
   const { settings, updateSettings, saveState, syncToCloud, loadFromCloud, updateCloud, syncCode, isSyncing } = useOS()
@@ -19,6 +19,15 @@ export function SettingsApp() {
   const [importCode, setImportCode] = useState("")
   const [syncMessage, setSyncMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
   const [copiedCode, setCopiedCode] = useState(false)
+  const [stats, setStats] = useState<{
+    totalProfiles: number
+    profilesCreatedToday: number
+    profilesCreatedThisWeek: number
+    recentProfiles: Array<{ code: string; username: string; createdAt: string }>
+    oldestProfile: { code: string; username: string; createdAt: string } | null
+  } | null>(null)
+  const [loadingStats, setLoadingStats] = useState(false)
+  const [deletingProfile, setDeletingProfile] = useState(false)
   const backgroundInputRef = useRef<HTMLInputElement>(null)
   const iconInputRef = useRef<HTMLInputElement>(null)
   const profileInputRef = useRef<HTMLInputElement>(null)
@@ -63,6 +72,54 @@ export function SettingsApp() {
       navigator.clipboard.writeText(syncCode)
       setCopiedCode(true)
       setTimeout(() => setCopiedCode(false), 2000)
+    }
+  }
+
+  const handleFetchStats = async () => {
+    setLoadingStats(true)
+    try {
+      const res = await fetch("/api/stats")
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      }
+    } catch (err) {
+      console.error("Erro ao carregar estatísticas:", err)
+    } finally {
+      setLoadingStats(false)
+    }
+  }
+
+  const handleDeleteMyProfile = async () => {
+    if (!syncCode) {
+      setSyncMessage({ type: "error", text: "Voce nao tem um perfil sincronizado para deletar." })
+      return
+    }
+
+    const confirmed = confirm(
+      "Tem certeza que deseja DELETAR seu perfil da nuvem?\n\n" +
+        "Isso ira remover permanentemente seus dados do servidor.\n" +
+        "Suas configuracoes locais serao mantidas.\n\n" +
+        "Esta acao nao pode ser desfeita!"
+    )
+
+    if (!confirmed) return
+
+    setDeletingProfile(true)
+    setSyncMessage(null)
+
+    try {
+      const res = await fetch(`/api/sync/${syncCode}/delete`, { method: "DELETE" })
+      if (res.ok) {
+        setSyncMessage({ type: "success", text: "Perfil deletado da nuvem com sucesso!" })
+      } else {
+        const data = await res.json()
+        setSyncMessage({ type: "error", text: data.error || "Erro ao deletar perfil." })
+      }
+    } catch (err) {
+      setSyncMessage({ type: "error", text: "Erro de conexao ao deletar perfil." })
+    } finally {
+      setDeletingProfile(false)
     }
   }
 
@@ -399,6 +456,95 @@ export function SettingsApp() {
               }`}
             >
               {syncMessage.text}
+            </div>
+          )}
+
+          {/* Estatísticas do Banco */}
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm flex items-center gap-2">
+                <BarChart3Icon className="h-4 w-4" />
+                Estatisticas da Nuvem
+              </h4>
+              <Button onClick={handleFetchStats} disabled={loadingStats} variant="outline" size="sm">
+                {loadingStats ? (
+                  <Loader2Icon className="mr-2 h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCwIcon className="mr-2 h-3 w-3" />
+                )}
+                {stats ? "Atualizar" : "Carregar"}
+              </Button>
+            </div>
+
+            {stats && (
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div className="rounded-md bg-background p-3 border border-border">
+                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                      <UsersIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <p className="text-2xl font-bold">{stats.totalProfiles}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                  <div className="rounded-md bg-background p-3 border border-border">
+                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <p className="text-2xl font-bold">{stats.profilesCreatedToday}</p>
+                    <p className="text-xs text-muted-foreground">Hoje</p>
+                  </div>
+                  <div className="rounded-md bg-background p-3 border border-border">
+                    <div className="flex items-center justify-center gap-1 text-muted-foreground mb-1">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                    </div>
+                    <p className="text-2xl font-bold">{stats.profilesCreatedThisWeek}</p>
+                    <p className="text-xs text-muted-foreground">Semana</p>
+                  </div>
+                </div>
+
+                {stats.recentProfiles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium">Perfis recentes:</p>
+                    <div className="space-y-1">
+                      {stats.recentProfiles.map((p) => (
+                        <div key={p.code} className="flex items-center justify-between text-xs bg-background rounded px-2 py-1.5 border border-border">
+                          <span className="font-mono font-semibold">{p.code}</span>
+                          <span className="text-muted-foreground truncate max-w-[120px]">{p.username || "Sem nome"}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Deletar Perfil */}
+          {syncCode && (
+            <div className="space-y-3 border-t border-border pt-4">
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                <h4 className="font-medium text-sm text-destructive flex items-center gap-2">
+                  <TrashIcon className="h-4 w-4" />
+                  Deletar Perfil da Nuvem
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Remove permanentemente seu perfil do servidor. Suas configuracoes locais serao mantidas.
+                </p>
+                <Button
+                  onClick={handleDeleteMyProfile}
+                  disabled={deletingProfile}
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                >
+                  {deletingProfile ? (
+                    <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <TrashIcon className="mr-2 h-4 w-4" />
+                  )}
+                  Deletar Meu Perfil
+                </Button>
+              </div>
             </div>
           )}
         </TabsContent>
