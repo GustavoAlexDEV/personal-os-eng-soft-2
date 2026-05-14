@@ -134,28 +134,28 @@ export function ProfileBrowser() {
     }
   }
 
-  const handleViewProfile = (profileCode: string) => {
-    setCode(profileCode)
+  const handleViewProfile = async (profileCode: string) => {
+    const trimmed = profileCode.toUpperCase()
+    setCode(trimmed)
     setViewMode("search")
-    // Busca o perfil automaticamente
-    setTimeout(() => {
-      const trimmed = profileCode.toUpperCase()
-      setLoading(true)
-      setError(null)
-      setProfile(null)
-      fetch(`/api/sync/${trimmed}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.stateData) {
-            setProfile(data.stateData)
-            setUpdatedAt(data.updatedAt)
-          } else {
-            setError(data.error || "Perfil nao encontrado")
-          }
-        })
-        .catch(() => setError("Erro ao buscar perfil"))
-        .finally(() => setLoading(false))
-    }, 100)
+    setLoading(true)
+    setError(null)
+    setProfile(null)
+
+    try {
+      const res = await fetch(`/api/sync/${trimmed}`)
+      const data = await res.json()
+      if (data.stateData) {
+        setProfile(data.stateData)
+        setUpdatedAt(data.updatedAt)
+      } else {
+        setError(data.error || "Perfil nao encontrado")
+      }
+    } catch {
+      setError("Erro ao buscar perfil")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const totalPages = Math.ceil(totalProfiles / profilesPerPage)
