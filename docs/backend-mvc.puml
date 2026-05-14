@@ -1,0 +1,217 @@
+@startuml PersonalOS_Backend_MVC
+
+skinparam backgroundColor #FAFAFA
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam defaultFontName Inter
+skinparam defaultFontSize 12
+
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #D1D5DB
+  FontColor #111827
+}
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #6366F1
+  HeaderBackgroundColor #EEF2FF
+  FontColor #111827
+}
+
+skinparam note {
+  BackgroundColor #FEF3C7
+  BorderColor #F59E0B
+}
+
+title Personal OS - Arquitetura Backend (MVC)\n
+
+' ============================================================
+' VIEW LAYER - Componentes React (Client-Side)
+' ============================================================
+package "View (Client)" <<Frame>> #F0F9FF {
+
+  class "OSContext\n(contexts/os-context.tsx)" as OSContext {
+    -- Estado --
+    icons: DesktopIcon[]
+    windows: Window[]
+    settings: OSSettings
+    isWelcomeComplete: boolean
+    syncCode: string | null
+    isSyncing: boolean
+    -- Sync Actions --
+    +syncToCloud(): Promise<string | null>
+    +loadFromCloud(code): Promise<boolean>
+    +updateCloud(): Promise<boolean>
+    -- Local Actions --
+    +saveState(): void
+    +loadState(): void
+    +revertChanges(): void
+  }
+
+  class "SettingsApp\n(components/apps/settings-app.tsx)" as SettingsApp {
+    -- Aba Sincronizar --
+    +handleSyncToCloud(): void
+    +handleLoadFromCloud(): void
+    +handleUpdateCloud(): void
+    +handleCopyCode(): void
+  }
+
+  class "ProfileBrowser\n(components/apps/profile-browser.tsx)" as ProfileBrowser {
+    -- Visualizacao Read-Only --
+    code: string
+    profile: RemoteProfile | null
+    +fetchProfile(): void
+    -- Exibe --
+    Perfil (avatar, nome, data)
+    Configuracoes visuais
+    Lista de icones
+    Previa miniatura do desktop
+  }
+
+  class "Taskbar\n(components/taskbar.tsx)" as Taskbar {
+    +handleOpenSettings(): void
+    +handleOpenPaint(): void
+    +handleOpenMinesweeper(): void
+    +handleOpenIconManager(): void
+    +handleOpenBrowser(): void
+  }
+
+  class "WindowManager\n(components/window-manager.tsx)" as WindowManager {
+    +getWindowContent(component): JSX
+    -- Rotas de componente --
+    "settings" => SettingsApp
+    "navegador" => ProfileBrowser
+    "paint" => PaintApp
+    "minesweeper" => MinesweeperApp
+    ...
+  }
+}
+
+' ============================================================
+' CONTROLLER LAYER - API Routes (Server-Side)
+' ============================================================
+package "Controller (API Routes)" <<Frame>> #FFF7ED {
+
+  class "POST /api/sync\n(app/api/sync/route.ts)" as SyncPost {
+    -- Request --
+    body: { icons, settings, isWelcomeComplete }
+    -- Response --
+    201: { syncCode: string }
+    400: { error: "Dados incompletos" }
+    500: { error: "Erro interno" }
+    -- Logica --
+    Valida payload
+    Gera codigo 6 chars unico
+    Insere no banco
+  }
+
+  class "GET /api/sync/[code]\n(app/api/sync/[code]/route.ts)" as SyncGet {
+    -- Request --
+    params: { code: string }
+    -- Response --
+    200: { stateData, updatedAt }
+    400: { error: "Codigo invalido" }
+    404: { error: "Perfil nao encontrado" }
+    -- Logica --
+    Valida formato (regex A-Z0-9, 6 chars)
+    Busca no banco por sync_code
+  }
+
+  class "PUT /api/sync/[code]\n(app/api/sync/[code]/route.ts)" as SyncPut {
+    -- Request --
+    params: { code: string }
+    body: { icons, settings, isWelcomeComplete }
+    -- Response --
+    200: { success: true }
+    400: { error: "Dados incompletos" }
+    404: { error: "Perfil nao encontrado" }
+    -- Logica --
+    Valida formato + payload
+    Atualiza state_data e updated_at
+  }
+
+  class "generateCode()\n(app/api/sync/route.ts)" as CodeGen {
+    charset: "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    length: 6
+    max retries: 10
+    +generateCode(): string
+  }
+}
+
+' ============================================================
+' MODEL LAYER - Database
+' ============================================================
+package "Model (Database)" <<Frame>> #F0FDF4 {
+
+  class "sql\n(lib/db.ts)" as DbClient {
+    -- Configuracao --
+    neon(process.env.DATABASE_URL)
+    -- Metodo --
+    Template literal SQL
+    Queries parametrizadas
+  }
+
+  class "sync_profiles\n(Neon PostgreSQL)" as SyncTable {
+    -- Colunas --
+    id: SERIAL PRIMARY KEY
+    sync_code: VARCHAR(6) UNIQUE NOT NULL
+    state_data: JSONB NOT NULL
+    created_at: TIMESTAMP DEFAULT NOW()
+    updated_at: TIMESTAMP DEFAULT NOW()
+    -- Index --
+    idx_sync_code ON sync_code
+  }
+
+  class "state_data (JSONB)" as StateData {
+    -- Estrutura --
+    icons: DesktopIcon[]
+    settings: OSSettings
+    isWelcomeComplete: boolean
+  }
+
+  note bottom of StateData
+    Armazena o estado completo
+    do Personal OS como JSON.
+    Imagens ficam inline
+    como base64 dentro do JSONB.
+  end note
+}
+
+' ============================================================
+' RELACOES - View => Controller
+' ============================================================
+OSContext -down-> SyncPost : "syncToCloud()\nfetch POST /api/sync"
+OSContext -down-> SyncGet : "loadFromCloud(code)\nfetch GET /api/sync/[code]"
+OSContext -down-> SyncPut : "updateCloud()\nfetch PUT /api/sync/[code]"
+
+ProfileBrowser -down-> SyncGet : "fetchProfile()\nfetch GET /api/sync/[code]\n(read-only)"
+
+SettingsApp -left-> OSContext : usa useOS()
+ProfileBrowser ..> OSContext : "NAO altera\nestado local"
+Taskbar -right-> WindowManager : abre janelas
+WindowManager -down-> SettingsApp : renderiza
+WindowManager -down-> ProfileBrowser : renderiza
+
+' ============================================================
+' RELACOES - Controller => Model
+' ============================================================
+SyncPost -down-> DbClient : "INSERT INTO sync_profiles"
+SyncGet -down-> DbClient : "SELECT FROM sync_profiles"
+SyncPut -down-> DbClient : "UPDATE sync_profiles"
+SyncPost -left-> CodeGen : gera codigo
+
+DbClient -down-> SyncTable : executa queries
+SyncTable -right-> StateData : contem
+
+' ============================================================
+' LEGENDA
+' ============================================================
+legend right
+  |= Camada |= Responsabilidade |
+  | **View** | Componentes React, estado client-side, UI |
+  | **Controller** | API Routes Next.js, validacao, orquestracao |
+  | **Model** | Acesso ao banco Neon, esquema de dados |
+endlegend
+
+@enduml
