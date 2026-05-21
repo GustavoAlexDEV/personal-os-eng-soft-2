@@ -282,23 +282,87 @@ https://v0-novas-rotas-banco.vercel.app/api
 ```json
 {
   "totalProfiles": 150,
-  "createdToday": 5,
-  "createdThisWeek": 25,
+  "profilesCreatedToday": 5,
+  "profilesCreatedThisWeek": 25,
   "recentProfiles": [
     {
-      "syncCode": "ABC123",
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
+      "code": "ABC123",
+      "username": "Usuario",
+      "createdAt": "2024-01-01T00:00:00.000Z"
     }
   ],
   "oldestProfile": {
-    "syncCode": "XYZ789",
+    "code": "XYZ789",
+    "username": "Primeiro Usuario",
     "createdAt": "2023-01-01T00:00:00.000Z"
   }
 }
 ```
 
 **Erros:** `500` Erro interno
+
+---
+
+## Arquitetura MVC
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          VIEW (Frontend)                        │
+├─────────────────────────────────────────────────────────────────┤
+│  OSContext          │  SettingsApp       │  ProfileBrowser      │
+│  (contexts/)        │  (components/apps/)│  (components/apps/)  │
+│                     │                    │                      │
+│  - syncToCloud()    │  - Aba Sincronizar │  - Buscar perfil     │
+│  - loadFromCloud()  │  - Salvar/Importar │  - Visualizar estado │
+│  - updateCloud()    │  - Copiar codigo   │  - Modo somente-leit.│
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                      CONTROLLER (API Routes)                    │
+├─────────────────────────────────────────────────────────────────┤
+│  POST /api/sync              │  Cria novo perfil, gera codigo   │
+│  GET  /api/sync/[code]       │  Busca perfil por codigo         │
+│  PUT  /api/sync/[code]       │  Atualiza perfil existente       │
+│  DELETE /api/sync/[code]/delete │  Deleta perfil (com senha)   │
+│  POST /api/sync/[code]/password │  Define senha do perfil      │
+│  GET  /api/sync/[code]/password │  Verifica se tem senha       │
+│  GET  /api/profiles          │  Lista todos os perfis           │
+│  GET  /api/stats             │  Estatisticas gerais             │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        MODEL (Database)                         │
+├─────────────────────────────────────────────────────────────────┤
+│  lib/db.ts                   │  Client Neon (sql tagged template)│
+│  sync_profiles (tabela)      │  Armazena estado em JSONB        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Estrutura de Arquivos das Rotas
+
+```
+app/
+└── api/
+    ├── profiles/
+    │   └── route.ts          # GET /api/profiles
+    ├── stats/
+    │   └── route.ts          # GET /api/stats
+    └── sync/
+        ├── route.ts          # POST /api/sync
+        └── [code]/
+            ├── route.ts      # GET/PUT /api/sync/:code
+            ├── delete/
+            │   └── route.ts  # DELETE /api/sync/:code/delete
+            └── password/
+                └── route.ts  # GET/POST /api/sync/:code/password
+
+lib/
+└── db.ts                     # Client Neon reutilizavel
+```
 
 ---
 

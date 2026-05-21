@@ -6,13 +6,13 @@ export async function GET() {
     const [countResult, recentResult, oldestResult] = await Promise.all([
       sql`SELECT COUNT(*) as total FROM sync_profiles`,
       sql`
-        SELECT sync_code, created_at, updated_at
+        SELECT sync_code, state_data, created_at, updated_at
         FROM sync_profiles
         ORDER BY updated_at DESC
         LIMIT 5
       `,
       sql`
-        SELECT sync_code, created_at, updated_at
+        SELECT sync_code, state_data, created_at, updated_at
         FROM sync_profiles
         ORDER BY created_at ASC
         LIMIT 1
@@ -40,21 +40,37 @@ export async function GET() {
       `,
     ])
 
+    // Extrai username dos perfis recentes
+    const recentWithUsernames = await Promise.all(
+      recentResult.map(async (p) => {
+        const stateData = p.state_data || {}
+        const settings = stateData.settings || {}
+        return {
+          code: p.sync_code,
+          username: settings.username || "",
+          createdAt: p.created_at,
+        }
+      })
+    )
+
+    // Extrai username do perfil mais antigo
+    let oldestWithUsername = null
+    if (oldestResult.length > 0) {
+      const oldestStateData = oldestResult[0].state_data || {}
+      const oldestSettings = oldestStateData.settings || {}
+      oldestWithUsername = {
+        code: oldestResult[0].sync_code,
+        username: oldestSettings.username || "",
+        createdAt: oldestResult[0].created_at,
+      }
+    }
+
     return NextResponse.json({
       totalProfiles: total,
-      createdToday: parseInt(todayResult[0].count),
-      createdThisWeek: parseInt(weekResult[0].count),
-      recentProfiles: recentResult.map((p) => ({
-        syncCode: p.sync_code,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-      })),
-      oldestProfile: oldestResult.length > 0
-        ? {
-            syncCode: oldestResult[0].sync_code,
-            createdAt: oldestResult[0].created_at,
-          }
-        : null,
+      profilesCreatedToday: parseInt(todayResult[0].count),
+      profilesCreatedThisWeek: parseInt(weekResult[0].count),
+      recentProfiles: recentWithUsernames,
+      oldestProfile: oldestWithUsername,
     })
   } catch (error) {
     console.error("Stats GET error:", error)
