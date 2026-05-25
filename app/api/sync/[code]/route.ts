@@ -1,6 +1,11 @@
-import { sql } from "@/lib/db"
+import { profileController } from "@/lib/config"
 import { NextResponse } from "next/server"
 
+/**
+ * GET /api/sync/[code]
+ * Busca um perfil específico por código
+ * Usa o controller polimórfico injetado via configuração
+ */
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ code: string }> }
@@ -9,21 +14,19 @@ export async function GET(
     const { code } = await params
     const syncCode = code.toUpperCase()
 
-    if (!/^[A-Z0-9]{6}$/.test(syncCode)) {
+    if (!/^[A-Z0-9]{6,8}$/.test(syncCode)) {
       return NextResponse.json({ error: "Codigo invalido" }, { status: 400 })
     }
 
-    const rows = await sql`
-      SELECT state_data, updated_at FROM sync_profiles WHERE sync_code = ${syncCode}
-    `
+    const profile = await profileController.show(syncCode)
 
-    if (rows.length === 0) {
+    if (!profile) {
       return NextResponse.json({ error: "Perfil nao encontrado" }, { status: 404 })
     }
 
     return NextResponse.json({
-      stateData: rows[0].state_data,
-      updatedAt: rows[0].updated_at,
+      stateData: profile.stateData,
+      updatedAt: profile.updatedAt,
     })
   } catch (error) {
     console.error("Sync GET error:", error)
@@ -31,6 +34,11 @@ export async function GET(
   }
 }
 
+/**
+ * PUT /api/sync/[code]
+ * Atualiza um perfil existente
+ * Usa o controller polimórfico injetado via configuração
+ */
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ code: string }> }
@@ -39,7 +47,7 @@ export async function PUT(
     const { code } = await params
     const syncCode = code.toUpperCase()
 
-    if (!/^[A-Z0-9]{6}$/.test(syncCode)) {
+    if (!/^[A-Z0-9]{6,8}$/.test(syncCode)) {
       return NextResponse.json({ error: "Codigo invalido" }, { status: 400 })
     }
 
@@ -50,16 +58,9 @@ export async function PUT(
       return NextResponse.json({ error: "Dados incompletos" }, { status: 400 })
     }
 
-    const stateData = JSON.stringify({ icons, settings, isWelcomeComplete })
+    const success = await profileController.update(syncCode, { icons, settings, isWelcomeComplete })
 
-    const result = await sql`
-      UPDATE sync_profiles
-      SET state_data = ${stateData}::jsonb, updated_at = NOW()
-      WHERE sync_code = ${syncCode}
-      RETURNING id
-    `
-
-    if (result.length === 0) {
+    if (!success) {
       return NextResponse.json({ error: "Perfil nao encontrado" }, { status: 404 })
     }
 

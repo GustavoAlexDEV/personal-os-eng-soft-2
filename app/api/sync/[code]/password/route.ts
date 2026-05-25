@@ -1,8 +1,15 @@
-import { sql } from "@/lib/db"
+import { profileController } from "@/lib/config"
 import { NextResponse } from "next/server"
 
-// Definir senha para o perfil
-export async function POST(request: Request, { params }: { params: Promise<{ code: string }> }) {
+/**
+ * POST /api/sync/[code]/password
+ * Define senha de proteção para o perfil
+ * Usa o controller polimórfico injetado via configuração
+ */
+export async function POST(
+  request: Request, 
+  { params }: { params: Promise<{ code: string }> }
+) {
   try {
     const { code } = await params
     const syncCode = code.toUpperCase()
@@ -17,23 +24,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
     }
 
     // Verifica se perfil existe
-    const existing = await sql`
-      SELECT sync_code, delete_password FROM sync_profiles WHERE sync_code = ${syncCode}
-    `
-
-    if (existing.length === 0) {
+    const profile = await profileController.show(syncCode)
+    if (!profile) {
       return NextResponse.json({ error: "Perfil nao encontrado" }, { status: 404 })
     }
 
     // Verifica se ja tem senha definida
-    if (existing[0].delete_password) {
+    if (profile.hasPassword) {
       return NextResponse.json({ error: "Este perfil ja possui uma senha definida" }, { status: 400 })
     }
 
-    // Define a senha
-    await sql`
-      UPDATE sync_profiles SET delete_password = ${password} WHERE sync_code = ${syncCode}
-    `
+    // Define a senha (hash é gerado no controller)
+    const success = await profileController.setPassword(syncCode, password)
+
+    if (!success) {
+      return NextResponse.json({ error: "Erro ao definir senha" }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true, message: "Senha definida com sucesso" })
   } catch (error) {
@@ -42,21 +48,26 @@ export async function POST(request: Request, { params }: { params: Promise<{ cod
   }
 }
 
-// Verificar se perfil tem senha
-export async function GET(request: Request, { params }: { params: Promise<{ code: string }> }) {
+/**
+ * GET /api/sync/[code]/password
+ * Verifica se perfil possui senha de proteção
+ * Usa o controller polimórfico injetado via configuração
+ */
+export async function GET(
+  request: Request, 
+  { params }: { params: Promise<{ code: string }> }
+) {
   try {
     const { code } = await params
     const syncCode = code.toUpperCase()
 
-    const result = await sql`
-      SELECT delete_password FROM sync_profiles WHERE sync_code = ${syncCode}
-    `
-
-    if (result.length === 0) {
+    const profile = await profileController.show(syncCode)
+    
+    if (!profile) {
       return NextResponse.json({ error: "Perfil nao encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json({ hasPassword: !!result[0].delete_password })
+    return NextResponse.json({ hasPassword: profile.hasPassword })
   } catch (error) {
     console.error("Password GET error:", error)
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 })

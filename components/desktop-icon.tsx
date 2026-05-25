@@ -57,6 +57,7 @@ export function DesktopIcon({ icon }: DesktopIconProps) {
         openWindow({
           title: icon.name,
           component: icon.name.toLowerCase().replace(/\s+/g, "-"),
+          icon: icon.icon,
           isMinimized: false,
           position: { x: 100, y: 100 },
           size: { width: 600, height: 400 },
@@ -71,6 +72,7 @@ export function DesktopIcon({ icon }: DesktopIconProps) {
         openWindow({
           title: icon.name,
           component: "script-runner",
+          icon: icon.icon,
           isMinimized: false,
           position: { x: 100, y: 100 },
           size: { width: 500, height: 400 },
@@ -81,6 +83,7 @@ export function DesktopIcon({ icon }: DesktopIconProps) {
         openWindow({
           title: icon.name,
           component: "image-viewer",
+          icon: icon.icon,
           isMinimized: false,
           position: { x: 100, y: 100 },
           size: { width: 600, height: 500 },

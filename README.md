@@ -303,12 +303,121 @@ https://v0-novas-rotas-banco.vercel.app/api
 
 ---
 
+## Estrategia Polimorfica do Projeto
+
+O projeto implementa **polimorfismo em TypeScript** utilizando classes abstratas como contratos (interfaces) e injecao de dependencias via configuracao.
+
+### Camadas Polimorficas
+
+#### 1. Controllers (lib/controllers/)
+
+**Interface base:** `IProfileController.ts`
+
+Define os metodos do contrato:
+```typescript
+index()      // Lista perfis com paginacao
+show()       // Busca perfil por codigo
+store()      // Cria novo perfil
+update()     // Atualiza perfil existente
+destroy()    // Remove perfil
+search()     // Busca perfis por query
+setPassword() // Define senha do perfil
+hasPassword() // Verifica se tem senha
+stats()      // Obtem estatisticas
+```
+
+**Implementacao:** `ProfileController.ts`
+- Herda de `IProfileController` e sobrescreve todos os metodos
+- Delega operacoes de persistencia ao DAO injetado via construtor
+
+#### 2. DAO - Data Access Object (lib/dao/)
+
+**Interface base:** `IProfileDAO.ts`
+
+Define os metodos de persistencia:
+```typescript
+create()           // Cria registro
+recovery()         // Recupera registros paginados
+recoveryByCode()   // Recupera por codigo
+update()           // Atualiza registro
+delete()           // Remove registro
+search()           // Busca registros
+setPassword()      // Define senha
+getPasswordHash()  // Obtem hash da senha
+countCreatedToday()    // Conta criados hoje
+countCreatedThisWeek() // Conta criados na semana
+countTotal()       // Conta total
+getRecent()        // Obtem mais recentes
+getOldest()        // Obtem mais antigo
+```
+
+**Implementacao:** `ProfileDAO_Neon.ts`
+- Herda de `IProfileDAO` e sobrescreve todos os metodos
+- Implementa persistencia usando Neon PostgreSQL
+
+#### 3. Configuracao (lib/config.ts)
+
+Arquivo central que define qual implementacao sera usada:
+
+```typescript
+const config = {
+  DAO: "ProfileDAO_Neon",        // Implementacao do DAO
+  Controller: "ProfileController" // Implementacao do Controller
+}
+```
+
+**Polimorfismo via Configuracao:**
+- Permite trocar implementacoes sem modificar codigo cliente
+- Factories criam instancias baseadas na configuracao
+- DAO e injetado no Controller via construtor
+
+### Fluxo da Aplicacao
+
+```
+API Route → profileController (singleton) → DAO → Banco de Dados
+     ↑              ↑                         ↑
+     │         lib/config.ts             lib/config.ts
+     │         (factory)                 (factory)
+```
+
+### Estrutura de Arquivos Polimorfica
+
+```
+lib/
+├── config.ts                    # Configuracao e factories
+├── db.ts                        # Cliente Neon
+├── controllers/
+│   ├── IProfileController.ts    # Interface (classe abstrata)
+│   └── ProfileController.ts     # Implementacao
+└── dao/
+    ├── IProfileDAO.ts           # Interface (classe abstrata)
+    └── ProfileDAO_Neon.ts       # Implementacao Neon
+```
+
+### Beneficios do Polimorfismo
+
+1. **Desacoplamento:** Controllers nao conhecem detalhes de persistencia
+2. **Testabilidade:** Facil criar mocks para testes unitarios
+3. **Extensibilidade:** Novas implementacoes sem alterar codigo existente
+4. **Configuracao:** Troca de comportamento via arquivo de config
+
+### Exemplo de Extensao
+
+Para adicionar suporte a outro banco (ex: Supabase):
+
+1. Criar `ProfileDAO_Supabase.ts` que herda de `IProfileDAO`
+2. Implementar todos os metodos abstratos
+3. Adicionar case no factory em `config.ts`
+4. Alterar `config.DAO = "ProfileDAO_Supabase"`
+
+---
+
 ## Arquitetura MVC
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                          VIEW (Frontend)                        │
-├─────────────────────────────────────────────────────────────────┤
+├─────────────────────────────────────────────────────────────────��
 │  OSContext          │  SettingsApp       │  ProfileBrowser      │
 │  (contexts/)        │  (components/apps/)│  (components/apps/)  │
 │                     │                    │                      │

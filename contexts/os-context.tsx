@@ -19,6 +19,7 @@ export interface Window {
   id: string
   title: string
   component: string
+  icon?: string
   isMinimized: boolean
   position: { x: number; y: number }
   size: { width: number; height: number }

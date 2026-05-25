@@ -77,6 +77,19 @@ export function Taskbar() {
     }
   }
 
+  // Renderiza o icone da janela (do desktop ou fallback)
+  const renderWindowIcon = (window: typeof windows[0]) => {
+    if (window.icon) {
+      const isEmoji = !window.icon.startsWith("http") && !window.icon.startsWith("data:")
+      if (isEmoji) {
+        return <span className="text-lg">{window.icon}</span>
+      }
+      return <img src={window.icon} alt={window.title} className="h-5 w-5 object-contain" />
+    }
+    // Fallback para icones padrao
+    return getWindowIcon(window.component)
+  }
+
   // Ao clicar na janela na taskbar
   const handleWindowClick = (windowId: string, isMinimized: boolean, isActive: boolean) => {
     if (isMinimized) {
@@ -101,6 +114,7 @@ export function Taskbar() {
     openWindow({
       title: "Configurações",
       component: "settings",
+      icon: "⚙️",
       isMinimized: false,
       position: { x: 100, y: 100 },
       size: { width: 500, height: 600 },
@@ -111,6 +125,7 @@ export function Taskbar() {
     openWindow({
       title: "Paint",
       component: "paint",
+      icon: "🎨",
       isMinimized: false,
       position: { x: 150, y: 150 },
       size: { width: 700, height: 500 },
@@ -121,6 +136,7 @@ export function Taskbar() {
     openWindow({
       title: "Campo Minado",
       component: "minesweeper",
+      icon: "💣",
       isMinimized: false,
       position: { x: 200, y: 200 },
       size: { width: 400, height: 500 },
@@ -131,6 +147,7 @@ export function Taskbar() {
     openWindow({
       title: "Gerenciar Ícones",
       component: "icon-manager",
+      icon: "📁",
       isMinimized: false,
       position: { x: 120, y: 120 },
       size: { width: 550, height: 600 },
@@ -141,6 +158,7 @@ export function Taskbar() {
     openWindow({
       title: "Navegador",
       component: "navegador",
+      icon: "🌐",
       isMinimized: false,
       position: { x: 180, y: 80 },
       size: { width: 500, height: 600 },
@@ -197,7 +215,7 @@ export function Taskbar() {
               }`}
               onClick={() => handleWindowClick(window.id, window.isMinimized, isActive)}
             >
-              {getWindowIcon(window.component)}
+              {renderWindowIcon(window)}
               {/* Indicador de janela ativa */}
               {isActive && (
                 <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-white rounded-full" />
