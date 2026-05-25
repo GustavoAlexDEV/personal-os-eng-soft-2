@@ -2,7 +2,16 @@
 
 import { useOS } from "@/contexts/os-context"
 import { Button } from "@/components/ui/button"
-import { SettingsIcon, PaletteIcon, GamepadIcon, FolderIcon, GlobeIcon } from "lucide-react"
+import { 
+  SettingsIcon, 
+  PaletteIcon, 
+  GamepadIcon, 
+  FolderIcon, 
+  GlobeIcon,
+  AppWindowIcon,
+  UsersIcon,
+  ImageIcon,
+} from "lucide-react"
 
 function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
@@ -39,7 +48,45 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
 }
 
 export function Taskbar() {
-  const { windows, restoreWindow, openWindow, settings } = useOS()
+  const { windows, restoreWindow, minimizeWindow, focusWindow, openWindow, settings } = useOS()
+
+  // Encontra a janela com maior zIndex (ativa)
+  const activeWindow = windows
+    .filter((w) => !w.isMinimized)
+    .reduce((max, w) => (w.zIndex > (max?.zIndex || 0) ? w : max), null as typeof windows[0] | null)
+
+  // Mapeia componentes para icones
+  const getWindowIcon = (component: string) => {
+    switch (component) {
+      case "settings":
+        return <SettingsIcon className="h-5 w-5" />
+      case "paint":
+        return <PaletteIcon className="h-5 w-5" />
+      case "minesweeper":
+        return <GamepadIcon className="h-5 w-5" />
+      case "icon-manager":
+        return <FolderIcon className="h-5 w-5" />
+      case "navegador":
+        return <GlobeIcon className="h-5 w-5" />
+      case "profile-browser":
+        return <UsersIcon className="h-5 w-5" />
+      case "image-viewer":
+        return <ImageIcon className="h-5 w-5" />
+      default:
+        return <AppWindowIcon className="h-5 w-5" />
+    }
+  }
+
+  // Ao clicar na janela na taskbar
+  const handleWindowClick = (windowId: string, isMinimized: boolean, isActive: boolean) => {
+    if (isMinimized) {
+      restoreWindow(windowId)
+    } else if (isActive) {
+      minimizeWindow(windowId)
+    } else {
+      focusWindow(windowId)
+    }
+  }
 
   function generateTaskbarGradient(hex: string): string {
     const hsl = hexToHsl(hex)
@@ -131,20 +178,38 @@ export function Taskbar() {
 
       <div className="mx-2 h-8 w-px bg-white/20" />
 
-      {/* Minimized Windows */}
-      {windows
-        .filter((w) => w.isMinimized)
-        .map((window) => (
-          <Button
-            key={window.id}
-            variant="ghost"
-            size="sm"
-            className="text-white hover:bg-white/20"
-            onClick={() => restoreWindow(window.id)}
-          >
-            {window.title}
-          </Button>
-        ))}
+      {/* Open Windows */}
+      <div className="flex items-center gap-1">
+        {windows.map((window) => {
+          const isActive = activeWindow?.id === window.id && !window.isMinimized
+          return (
+            <Button
+              key={window.id}
+              variant="ghost"
+              size="icon"
+              title={window.title}
+              className={`relative text-white transition-all ${
+                isActive 
+                  ? "bg-white/30 hover:bg-white/40 ring-2 ring-white/50" 
+                  : window.isMinimized
+                    ? "bg-white/5 hover:bg-white/15 opacity-70"
+                    : "bg-white/10 hover:bg-white/20"
+              }`}
+              onClick={() => handleWindowClick(window.id, window.isMinimized, isActive)}
+            >
+              {getWindowIcon(window.component)}
+              {/* Indicador de janela ativa */}
+              {isActive && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-0.5 bg-white rounded-full" />
+              )}
+              {/* Indicador de janela minimizada */}
+              {window.isMinimized && (
+                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-2 h-0.5 bg-white/50 rounded-full" />
+              )}
+            </Button>
+          )
+        })}
+      </div>
     </div>
   )
 }
