@@ -9,7 +9,7 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ## Link para Teste Funcional
 
-**Aplicacao em Producao:** [https://v0-novas-rotas-banco.vercel.app](https://v0-novas-rotas-banco.vercel.app)
+**Aplicacao em Producao:** [https://v0-personal-os-eng-soft-2.vercel.app](https://v0-personal-os-eng-soft-2.vercel.app)
 
 ---
 
