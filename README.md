@@ -9,7 +9,9 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ## Link para Teste Funcional
 
+
 **Aplicacao em Producao:** [https://v0-personal-os-eng-soft-2.vercel.app](https://v0-personal-os-eng-soft-2.vercel.app)
+
 
 ---
 
@@ -65,14 +67,10 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ## Rotas REST Implementadas
 
-### Base URL
-```
-https://v0-novas-rotas-banco.vercel.app/api
-```
-
----
 
 ### 1. Sincronizacao - Criar Novo Perfil
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync
 
 | Item | Valor |
 |------|-------|
@@ -105,6 +103,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 
 ### 2. Sincronizacao - Obter Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `GET /api/sync/{code}` |
@@ -128,6 +128,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 ---
 
 ### 3. Sincronizacao - Atualizar Perfil
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 
 | Item | Valor |
 |------|-------|
@@ -161,6 +163,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 
 ### 4. Sincronizacao - Deletar Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/delete
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `DELETE /api/sync/{code}/delete` |
@@ -189,6 +193,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 
 ### 5. Senha - Definir Senha do Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `POST /api/sync/{code}/password` |
@@ -216,6 +222,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 
 ### 6. Senha - Verificar se Perfil tem Senha
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `GET /api/sync/{code}/password` |
@@ -234,6 +242,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 ---
 
 ### 7. Perfis - Listar Todos os Perfis
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/profiles
 
 | Item | Valor |
 |------|-------|
@@ -272,6 +282,8 @@ https://v0-novas-rotas-banco.vercel.app/api
 ---
 
 ### 8. Estatisticas - Obter Estatisticas Gerais
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/stats
 
 | Item | Valor |
 |------|-------|
