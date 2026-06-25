@@ -427,23 +427,64 @@ Para adicionar suporte a outro banco (ex: Supabase):
 ## Diagramas UML (PlantUML)
 
 Os diagramas de projeto do BackEnd estao disponiveis em formato PlantUML no arquivo
-[`docs/diagramas-backend.txt`](docs/diagramas-backend.txt).
+[`docs/diagramas-backend.txt`](docs/diagramas-backend.txt) e renderizados como imagem
+na pasta [`docs/images/`](docs/images/).
 
-Para visualizar, copie cada bloco entre `@startuml` e `@enduml` e cole em
-[https://www.planttext.com](https://www.planttext.com).
+> Para regenerar as imagens: copie cada bloco entre `@startuml` e `@enduml` do arquivo
+> [`docs/diagramas-backend.txt`](docs/diagramas-backend.txt), cole em
+> [https://www.planttext.com](https://www.planttext.com) e exporte como PNG.
 
-### Conteudo do arquivo
+### 1. Diagrama de Classes
 
-| # | Diagrama | Descricao |
-|---|----------|-----------|
-| 1 | **Diagrama de Classes** | Projeto de classes do BackEnd organizado nos pacotes MVC: **Model** (objetos persistentes `SyncProfile` + camada de persistencia `IProfileDAO` / `ProfileDAO_Neon` / `db`), **Controller** (`IProfileController` / `ProfileController` / factory `config`) e **View** (rotas REST - camada de servicos). Mostra heranca (classes abstratas), injecao de dependencia e relacoes transientes/persistentes. |
-| 2 | **Sequencia - Criar Perfil** | Fluxo `POST /api/sync` -> `store()` -> `create()` |
-| 3 | **Sequencia - Buscar Perfil** | Fluxo `GET /api/sync/[code]` -> `show()` -> `recoveryByCode()` |
-| 4 | **Sequencia - Atualizar Perfil** | Fluxo `PUT /api/sync/[code]` -> `update()` |
-| 5 | **Sequencia - Deletar Perfil** | Fluxo `DELETE /api/sync/[code]/delete` com verificacao de senha (bcrypt) |
-| 6 | **Sequencia - Definir Senha** | Fluxo `POST /api/sync/[code]/password` -> `setPassword()` |
-| 7 | **Sequencia - Listar Perfis** | Fluxo `GET /api/profiles` -> `index()` -> `recovery()` |
-| 8 | **Sequencia - Estatisticas** | Fluxo `GET /api/stats` -> `stats()` com consultas paralelas |
+Projeto de classes do BackEnd organizado nos pacotes MVC: **Model** (objetos persistentes
+`SyncProfile` + camada de persistencia `IProfileDAO` / `ProfileDAO_Neon` / `db`),
+**Controller** (`IProfileController` / `ProfileController` / factory `config`) e
+**View** (rotas REST - camada de servicos). Mostra heranca (classes abstratas),
+injecao de dependencia e relacoes transientes/persistentes.
+
+![Diagrama de Classes do BackEnd](docs/images/diagrama-classes.png)
+
+### 2. Sequencia - Criar Perfil
+
+Fluxo `POST /api/sync` -> `store()` -> `create()`.
+
+![Diagrama de Sequencia - Criar Perfil](docs/images/seq-criar-perfil.png)
+
+### 3. Sequencia - Buscar Perfil
+
+Fluxo `GET /api/sync/[code]` -> `show()` -> `recoveryByCode()`.
+
+![Diagrama de Sequencia - Buscar Perfil](docs/images/seq-buscar-perfil.png)
+
+### 4. Sequencia - Atualizar Perfil
+
+Fluxo `PUT /api/sync/[code]` -> `update()`.
+
+![Diagrama de Sequencia - Atualizar Perfil](docs/images/seq-atualizar-perfil.png)
+
+### 5. Sequencia - Deletar Perfil
+
+Fluxo `DELETE /api/sync/[code]/delete` com verificacao de senha (bcrypt).
+
+![Diagrama de Sequencia - Deletar Perfil](docs/images/seq-deletar-perfil.png)
+
+### 6. Sequencia - Definir Senha
+
+Fluxo `POST /api/sync/[code]/password` -> `setPassword()`.
+
+![Diagrama de Sequencia - Definir Senha](docs/images/seq-definir-senha.png)
+
+### 7. Sequencia - Listar Perfis
+
+Fluxo `GET /api/profiles` -> `index()` -> `recovery()`.
+
+![Diagrama de Sequencia - Listar Perfis](docs/images/seq-listar-perfis.png)
+
+### 8. Sequencia - Estatisticas
+
+Fluxo `GET /api/stats` -> `stats()` com consultas paralelas.
+
+![Diagrama de Sequencia - Estatisticas](docs/images/seq-estatisticas.png)
 
 ### Classes Persistentes vs Transientes
 
@@ -485,7 +526,7 @@ Para visualizar, copie cada bloco entre `@startuml` e `@enduml` e cole em
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        MODEL (Database)                         │
-├─────────────────────────────────────────────────────────────────┤
+├─────────────────────────────────────────────────────────��───────┤
 │  lib/db.ts                   │  Client Neon (sql tagged template)│
 │  sync_profiles (tabela)      │  Armazena estado em JSONB        │
 └─────────────────────────────────────────────────────────────────┘
