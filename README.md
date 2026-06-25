@@ -424,6 +424,36 @@ Para adicionar suporte a outro banco (ex: Supabase):
 
 ---
 
+## Diagramas UML (PlantUML)
+
+Os diagramas de projeto do BackEnd estao disponiveis em formato PlantUML no arquivo
+[`docs/diagramas-backend.txt`](docs/diagramas-backend.txt).
+
+Para visualizar, copie cada bloco entre `@startuml` e `@enduml` e cole em
+[https://www.planttext.com](https://www.planttext.com).
+
+### Conteudo do arquivo
+
+| # | Diagrama | Descricao |
+|---|----------|-----------|
+| 1 | **Diagrama de Classes** | Projeto de classes do BackEnd organizado nos pacotes MVC: **Model** (objetos persistentes `SyncProfile` + camada de persistencia `IProfileDAO` / `ProfileDAO_Neon` / `db`), **Controller** (`IProfileController` / `ProfileController` / factory `config`) e **View** (rotas REST - camada de servicos). Mostra heranca (classes abstratas), injecao de dependencia e relacoes transientes/persistentes. |
+| 2 | **Sequencia - Criar Perfil** | Fluxo `POST /api/sync` -> `store()` -> `create()` |
+| 3 | **Sequencia - Buscar Perfil** | Fluxo `GET /api/sync/[code]` -> `show()` -> `recoveryByCode()` |
+| 4 | **Sequencia - Atualizar Perfil** | Fluxo `PUT /api/sync/[code]` -> `update()` |
+| 5 | **Sequencia - Deletar Perfil** | Fluxo `DELETE /api/sync/[code]/delete` com verificacao de senha (bcrypt) |
+| 6 | **Sequencia - Definir Senha** | Fluxo `POST /api/sync/[code]/password` -> `setPassword()` |
+| 7 | **Sequencia - Listar Perfis** | Fluxo `GET /api/profiles` -> `index()` -> `recovery()` |
+| 8 | **Sequencia - Estatisticas** | Fluxo `GET /api/stats` -> `stats()` com consultas paralelas |
+
+### Classes Persistentes vs Transientes
+
+- **Persistentes (Model):** `SyncProfile` — entidade mapeada para a tabela `sync_profiles` (armazenada no banco Neon).
+- **Transientes (Model/Persistencia):** `IProfileDAO`, `ProfileDAO_Neon`, `db` — existem apenas em tempo de execucao para mediar o acesso aos dados.
+- **Transientes (Controller):** `IProfileController`, `ProfileController`, `config` (factory) — coordenam a logica de negocio.
+- **Transientes (View):** rotas REST em `app/api/**/route.ts` — expoem os servicos HTTP.
+
+---
+
 ## Arquitetura MVC
 
 ```
