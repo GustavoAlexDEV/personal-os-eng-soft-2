@@ -424,6 +424,36 @@ Para adicionar suporte a outro banco (ex: Supabase):
 
 ---
 
+## Diagramas UML (PlantUML)
+
+Os diagramas de projeto do BackEnd estao disponiveis em formato PlantUML no arquivo
+[`docs/diagramas-backend.txt`](docs/diagramas-backend.txt) e renderizados como imagem
+na pasta [`docs/images/`](docs/images/).
+
+> Para regenerar as imagens: copie cada bloco entre `@startuml` e `@enduml` do arquivo
+> [`docs/diagramas-backend.txt`](docs/diagramas-backend.txt), cole em
+> [https://www.planttext.com](https://www.planttext.com) e exporte como PNG.
+
+### Diagrama de Classes
+
+Projeto de classes do BackEnd organizado nos pacotes MVC: **Model** (objetos persistentes
+`SyncProfile` + camada de persistencia `IProfileDAO` / `ProfileDAO_Neon` / `db`),
+**Controller** (`IProfileController` / `ProfileController` / factory `config`) e
+**View** (rotas REST - camada de servicos). Mostra heranca (classes abstratas),
+injecao de dependencia e relacoes transientes/persistentes.
+
+![Diagrama de Classes do BackEnd](docs/DiagramaClasses.png)
+
+
+### Classes Persistentes vs Transientes
+
+- **Persistentes (Model):** `SyncProfile` — entidade mapeada para a tabela `sync_profiles` (armazenada no banco Neon).
+- **Transientes (Model/Persistencia):** `IProfileDAO`, `ProfileDAO_Neon`, `db` — existem apenas em tempo de execucao para mediar o acesso aos dados.
+- **Transientes (Controller):** `IProfileController`, `ProfileController`, `config` (factory) — coordenam a logica de negocio.
+- **Transientes (View):** rotas REST em `app/api/**/route.ts` — expoem os servicos HTTP.
+
+---
+
 ## Arquitetura MVC
 
 ```
@@ -455,7 +485,7 @@ Para adicionar suporte a outro banco (ex: Supabase):
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                        MODEL (Database)                         │
-├─────────────────────────────────────────────────────────────────┤
+├─────────────────────────────────────────────────────────��───────┤
 │  lib/db.ts                   │  Client Neon (sql tagged template)│
 │  sync_profiles (tabela)      │  Armazena estado em JSONB        │
 └─────────────────────────────────────────────────────────────────┘

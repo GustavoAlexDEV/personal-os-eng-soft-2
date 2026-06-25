@@ -1,0 +1,529 @@
+================================================================================
+ DIAGRAMAS DO BACKEND - Personal OS
+ Cole cada bloco (entre @startuml e @enduml) em https://www.planttext.com
+================================================================================
+
+
+================================================================================
+ 1. DIAGRAMA DE CLASSES - Arquitetura MVC do BackEnd
+================================================================================
+ Pacotes:
+   - View (Camada de Servicos)  -> Rotas REST (classes transientes)
+   - Controller (Camada de Controle) -> Controllers + Factory (transientes)
+   - Model (Objetos Persistentes + Camada de Persistencia)
+--------------------------------------------------------------------------------
+
+@startuml DiagramaDeClasses
+title Diagrama de Classes - BackEnd Personal OS (MVC)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+' ============================================================
+package "View (Camada de Servicos)" <<Folder>> {
+
+  class "POST /api/sync" as SyncRoute <<route>> {
+    + POST(request) : Response
+  }
+  class "GET|PUT /api/sync/[code]" as SyncCodeRoute <<route>> {
+    + GET(request, params) : Response
+    + PUT(request, params) : Response
+  }
+  class "DELETE /api/sync/[code]/delete" as DeleteRoute <<route>> {
+    + DELETE(request, params) : Response
+  }
+  class "GET|POST /api/sync/[code]/password" as PasswordRoute <<route>> {
+    + GET(request, params) : Response
+    + POST(request, params) : Response
+  }
+  class "GET /api/profiles" as ProfilesRoute <<route>> {
+    + GET(request) : Response
+  }
+  class "GET /api/stats" as StatsRoute <<route>> {
+    + GET() : Response
+  }
+}
+
+' ============================================================
+package "Controller (Camada de Controle)" <<Folder>> {
+
+  abstract class IProfileController <<abstract>> {
+    + {abstract} index(page, limit) : Promise
+    + {abstract} show(code) : Promise
+    + {abstract} store(data) : Promise
+    + {abstract} update(code, data) : Promise
+    + {abstract} destroy(code, password) : Promise
+    + {abstract} search(query) : Promise
+    + {abstract} setPassword(code, password) : Promise
+    + {abstract} hasPassword(code) : Promise
+    + {abstract} stats() : Promise
+  }
+
+  class ProfileController {
+    - dao : IProfileDAO
+    + constructor(dao : IProfileDAO)
+    - generateSyncCode() : string
+    + index(page, limit) : Promise
+    + show(code) : Promise
+    + store(data) : Promise
+    + update(code, data) : Promise
+    + destroy(code, password) : Promise
+    + search(query) : Promise
+    + setPassword(code, password) : Promise
+    + hasPassword(code) : Promise
+    + stats() : Promise
+  }
+
+  class "config (Factory + DI)" as Config <<factory>> {
+    - config : object
+    - createDAO() : IProfileDAO
+    - createController() : IProfileController
+    + profileController : IProfileController
+  }
+}
+
+' ============================================================
+package "Model" <<Folder>> {
+
+  package "Camada de Persistencia" {
+    abstract class IProfileDAO <<abstract>> {
+      + {abstract} create(data) : Promise
+      + {abstract} recovery(page, limit) : Promise
+      + {abstract} recoveryByCode(code) : Promise
+      + {abstract} update(code, stateData) : Promise
+      + {abstract} delete(code) : Promise
+      + {abstract} search(query) : Promise
+      + {abstract} setPassword(code, hash) : Promise
+      + {abstract} getPasswordHash(code) : Promise
+      + {abstract} countCreatedToday() : Promise
+      + {abstract} countCreatedThisWeek() : Promise
+      + {abstract} countTotal() : Promise
+      + {abstract} getRecent(limit) : Promise
+      + {abstract} getOldest() : Promise
+    }
+
+    class ProfileDAO_Neon {
+      + create(data) : Promise
+      + recovery(page, limit) : Promise
+      + recoveryByCode(code) : Promise
+      + update(code, stateData) : Promise
+      + delete(code) : Promise
+      + search(query) : Promise
+      + setPassword(code, hash) : Promise
+      + getPasswordHash(code) : Promise
+      + countCreatedToday() : Promise
+      + countCreatedThisWeek() : Promise
+      + countTotal() : Promise
+      + getRecent(limit) : Promise
+      + getOldest() : Promise
+    }
+
+    class "db (Neon Client)" as Db <<client>> {
+      + sql : NeonQueryFunction
+    }
+  }
+
+  package "Objetos Persistentes" {
+    entity SyncProfile <<persistent>> {
+      + id : SERIAL <<PK>>
+      + sync_code : VARCHAR(8) <<unique>>
+      + state_data : JSONB
+      + delete_password : VARCHAR(255)
+      + created_at : TIMESTAMP
+      + updated_at : TIMESTAMP
+    }
+  }
+}
+
+' ============================================================
+' Relacionamentos
+' ============================================================
+ProfileController -up-|> IProfileController : extends
+ProfileDAO_Neon -up-|> IProfileDAO : extends
+
+Config ....> ProfileController : <<create>>
+Config ....> ProfileDAO_Neon : <<create>>
+ProfileController o---> IProfileDAO : injecao (dao)
+
+SyncRoute ....> Config : usa profileController
+SyncCodeRoute ....> Config : usa profileController
+DeleteRoute ....> Config : usa profileController
+PasswordRoute ....> Config : usa profileController
+ProfilesRoute ....> Config : usa profileController
+StatsRoute ....> Config : usa profileController
+
+ProfileDAO_Neon ....> Db : usa sql
+Db ....> SyncProfile : persiste em\n(sync_profiles)
+
+@enduml
+
+
+================================================================================
+ 2. DIAGRAMA DE SEQUENCIA - Criar Perfil (POST /api/sync -> store)
+================================================================================
+
+@startuml SequenciaCriarPerfil
+title Sequencia - Criar Perfil (POST /api/sync)
+
+actor Cliente
+participant "POST /api/sync\n(View)" as Route
+participant "profileController\n(Config/Factory)" as Config
+participant "ProfileController\n(Controller)" as Ctrl
+participant "ProfileDAO_Neon\n(Persistencia)" as DAO
+database "Neon\n(sync_profiles)" as DB
+
+Cliente -> Route : POST { icons, settings, isWelcomeComplete }
+activate Route
+Route -> Route : valida (icons e settings presentes)
+Route -> Config : profileController.store(data)
+activate Config
+Config -> Ctrl : store(data)
+activate Ctrl
+Ctrl -> Ctrl : generateSyncCode()
+Ctrl -> DAO : create({ syncCode, stateData })
+activate DAO
+DAO -> DB : INSERT INTO sync_profiles ... RETURNING *
+activate DB
+DB --> DAO : registro criado
+deactivate DB
+DAO --> Ctrl : registro
+deactivate DAO
+Ctrl --> Config : { syncCode }
+deactivate Ctrl
+Config --> Route : { syncCode }
+deactivate Config
+Route --> Cliente : 201 Created { syncCode }
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 3. DIAGRAMA DE SEQUENCIA - Buscar Perfil (GET /api/sync/[code] -> show)
+================================================================================
+
+@startuml SequenciaBuscarPerfil
+title Sequencia - Buscar Perfil (GET /api/sync/[code])
+
+actor Cliente
+participant "GET /api/sync/[code]\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+database "Neon" as DB
+
+Cliente -> Route : GET /api/sync/{code}
+activate Route
+Route -> Route : code.toUpperCase() + valida regex
+alt codigo invalido
+  Route --> Cliente : 400 Codigo invalido
+else codigo valido
+  Route -> Config : profileController.show(code)
+  activate Config
+  Config -> Ctrl : show(code)
+  activate Ctrl
+  Ctrl -> DAO : recoveryByCode(code)
+  activate DAO
+  DAO -> DB : SELECT ... WHERE sync_code = code
+  activate DB
+  DB --> DAO : registro ou null
+  deactivate DB
+  DAO --> Ctrl : registro
+  deactivate DAO
+  alt perfil nao encontrado
+    Ctrl --> Config : null
+    Config --> Route : null
+    Route --> Cliente : 404 Perfil nao encontrado
+  else perfil encontrado
+    Ctrl --> Config : { syncCode, stateData, hasPassword, ... }
+    deactivate Ctrl
+    Config --> Route : profile
+    deactivate Config
+    Route --> Cliente : 200 { stateData, updatedAt }
+  end
+end
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 4. DIAGRAMA DE SEQUENCIA - Atualizar Perfil (PUT /api/sync/[code] -> update)
+================================================================================
+
+@startuml SequenciaAtualizarPerfil
+title Sequencia - Atualizar Perfil (PUT /api/sync/[code])
+
+actor Cliente
+participant "PUT /api/sync/[code]\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+database "Neon" as DB
+
+Cliente -> Route : PUT { icons, settings, isWelcomeComplete }
+activate Route
+Route -> Route : valida codigo e dados
+Route -> Config : profileController.update(code, data)
+activate Config
+Config -> Ctrl : update(code, data)
+activate Ctrl
+Ctrl -> DAO : update(code, data)
+activate DAO
+DAO -> DB : UPDATE sync_profiles SET state_data, updated_at ... RETURNING *
+activate DB
+DB --> DAO : linhas afetadas
+deactivate DB
+DAO --> Ctrl : boolean (length > 0)
+deactivate DAO
+Ctrl --> Config : boolean
+deactivate Ctrl
+Config --> Route : success
+deactivate Config
+alt nao encontrado
+  Route --> Cliente : 404 Perfil nao encontrado
+else atualizado
+  Route --> Cliente : 200 { success: true }
+end
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 5. DIAGRAMA DE SEQUENCIA - Deletar Perfil com Senha
+    (DELETE /api/sync/[code]/delete -> hasPassword + destroy)
+================================================================================
+
+@startuml SequenciaDeletarPerfil
+title Sequencia - Deletar Perfil (DELETE /api/sync/[code]/delete)
+
+actor Cliente
+participant "DELETE .../delete\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+participant "bcryptjs" as Bcrypt
+database "Neon" as DB
+
+Cliente -> Route : DELETE { password? }
+activate Route
+Route -> Config : profileController.hasPassword(code)
+activate Config
+Config -> Ctrl : hasPassword(code)
+activate Ctrl
+Ctrl -> DAO : getPasswordHash(code)
+activate DAO
+DAO -> DB : SELECT delete_password WHERE sync_code = code
+DB --> DAO : hash ou null
+DAO --> Ctrl : hash
+deactivate DAO
+Ctrl --> Config : boolean (!!hash)
+deactivate Ctrl
+Config --> Route : hasPassword
+deactivate Config
+
+alt tem senha e nenhuma senha enviada
+  Route --> Cliente : 401 Senha obrigatoria (requiresPassword)
+else prosseguir exclusao
+  Route -> Config : profileController.destroy(code, password)
+  activate Config
+  Config -> Ctrl : destroy(code, password)
+  activate Ctrl
+  Ctrl -> DAO : recoveryByCode(code)
+  activate DAO
+  DAO -> DB : SELECT ... WHERE sync_code = code
+  DB --> DAO : registro
+  DAO --> Ctrl : registro
+  deactivate DAO
+  alt registro tem delete_password
+    Ctrl -> Bcrypt : compare(password, delete_password)
+    activate Bcrypt
+    Bcrypt --> Ctrl : valido?
+    deactivate Bcrypt
+    alt senha invalida
+      Ctrl --> Config : false
+      Config --> Route : false
+      Route --> Cliente : 403 Senha incorreta
+    else senha valida
+      Ctrl -> DAO : delete(code)
+      activate DAO
+      DAO -> DB : DELETE FROM sync_profiles WHERE sync_code = code
+      DB --> DAO : linhas afetadas
+      DAO --> Ctrl : boolean
+      deactivate DAO
+      Ctrl --> Config : true
+      Config --> Route : true
+      Route --> Cliente : 200 Perfil deletado
+    end
+  else sem senha (perfil livre)
+    Ctrl -> DAO : delete(code)
+    activate DAO
+    DAO -> DB : DELETE FROM sync_profiles WHERE sync_code = code
+    DB --> DAO : boolean
+    DAO --> Ctrl : boolean
+    deactivate DAO
+    Ctrl --> Config : true
+    Config --> Route : true
+    Route --> Cliente : 200 Perfil deletado
+  end
+  deactivate Ctrl
+  deactivate Config
+end
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 6. DIAGRAMA DE SEQUENCIA - Definir Senha
+    (POST /api/sync/[code]/password -> show + setPassword)
+================================================================================
+
+@startuml SequenciaDefinirSenha
+title Sequencia - Definir Senha (POST /api/sync/[code]/password)
+
+actor Cliente
+participant "POST .../password\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+participant "bcryptjs" as Bcrypt
+database "Neon" as DB
+
+Cliente -> Route : POST { password }
+activate Route
+Route -> Route : valida senha (string, <= 20 chars)
+Route -> Config : profileController.show(code)
+activate Config
+Config -> Ctrl : show(code)
+activate Ctrl
+Ctrl -> DAO : recoveryByCode(code)
+DAO -> DB : SELECT ... WHERE sync_code = code
+DB --> DAO : registro
+DAO --> Ctrl : registro
+Ctrl --> Config : profile (hasPassword)
+deactivate Ctrl
+Config --> Route : profile
+deactivate Config
+
+alt perfil inexistente
+  Route --> Cliente : 404 Perfil nao encontrado
+else ja possui senha
+  Route --> Cliente : 400 Perfil ja possui senha
+else definir senha
+  Route -> Config : profileController.setPassword(code, password)
+  activate Config
+  Config -> Ctrl : setPassword(code, password)
+  activate Ctrl
+  Ctrl -> Bcrypt : hash(password, 10)
+  activate Bcrypt
+  Bcrypt --> Ctrl : passwordHash
+  deactivate Bcrypt
+  Ctrl -> DAO : setPassword(code, passwordHash)
+  activate DAO
+  DAO -> DB : UPDATE sync_profiles SET delete_password ... RETURNING *
+  DB --> DAO : linhas afetadas
+  DAO --> Ctrl : boolean
+  deactivate DAO
+  Ctrl --> Config : boolean
+  deactivate Ctrl
+  Config --> Route : success
+  deactivate Config
+  Route --> Cliente : 200 Senha definida com sucesso
+end
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 7. DIAGRAMA DE SEQUENCIA - Listar Perfis (GET /api/profiles -> index)
+================================================================================
+
+@startuml SequenciaListarPerfis
+title Sequencia - Listar Perfis (GET /api/profiles)
+
+actor Cliente
+participant "GET /api/profiles\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+database "Neon" as DB
+
+Cliente -> Route : GET /api/profiles?page&limit
+activate Route
+Route -> Route : normaliza page e limit
+Route -> Config : profileController.index(page, limit)
+activate Config
+Config -> Ctrl : index(page, limit)
+activate Ctrl
+Ctrl -> DAO : recovery(page, limit)
+activate DAO
+DAO -> DB : SELECT ... LIMIT/OFFSET (em paralelo)
+DAO -> DB : SELECT COUNT(*) total
+DB --> DAO : perfis + total
+deactivate DB
+DAO --> Ctrl : { profiles, total }
+deactivate DAO
+Ctrl -> Ctrl : mapeia perfis + calcula paginacao
+Ctrl --> Config : { profiles, total, pagination }
+deactivate Ctrl
+Config --> Route : resultado
+deactivate Config
+Route --> Cliente : 200 { profiles, total, pagination }
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ 8. DIAGRAMA DE SEQUENCIA - Estatisticas (GET /api/stats -> stats)
+================================================================================
+
+@startuml SequenciaEstatisticas
+title Sequencia - Estatisticas (GET /api/stats)
+
+actor Cliente
+participant "GET /api/stats\n(View)" as Route
+participant "profileController" as Config
+participant "ProfileController" as Ctrl
+participant "ProfileDAO_Neon" as DAO
+database "Neon" as DB
+
+Cliente -> Route : GET /api/stats
+activate Route
+Route -> Config : profileController.stats()
+activate Config
+Config -> Ctrl : stats()
+activate Ctrl
+
+note right of Ctrl : Promise.all (consultas em paralelo)
+Ctrl -> DAO : countTotal()
+DAO -> DB : SELECT COUNT(*)
+Ctrl -> DAO : countCreatedToday()
+DAO -> DB : SELECT COUNT(*) WHERE created_at >= CURRENT_DATE
+Ctrl -> DAO : countCreatedThisWeek()
+DAO -> DB : SELECT COUNT(*) WHERE created_at >= week
+Ctrl -> DAO : getRecent(5)
+DAO -> DB : SELECT ... ORDER BY updated_at DESC LIMIT 5
+Ctrl -> DAO : getOldest()
+DAO -> DB : SELECT ... ORDER BY created_at ASC LIMIT 1
+DB --> DAO : resultados
+DAO --> Ctrl : valores agregados
+
+Ctrl -> Ctrl : monta recentProfiles + oldestProfile
+Ctrl --> Config : { totalProfiles, today, week, recent, oldest }
+deactivate Ctrl
+Config --> Route : stats
+deactivate Config
+Route --> Cliente : 200 { estatisticas }
+deactivate Route
+
+@enduml
+
+
+================================================================================
+ FIM DOS DIAGRAMAS
+================================================================================
