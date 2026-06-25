@@ -68,6 +68,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 1. Sincronizacao - Criar Novo Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `POST /api/sync` |
@@ -99,6 +101,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 2. Sincronizacao - Obter Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `GET /api/sync/{code}` |
@@ -122,6 +126,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 ---
 
 ### 3. Sincronizacao - Atualizar Perfil
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 
 | Item | Valor |
 |------|-------|
@@ -155,6 +161,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 4. Sincronizacao - Deletar Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/delete
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `DELETE /api/sync/{code}/delete` |
@@ -183,6 +191,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 5. Senha - Definir Senha do Perfil
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `POST /api/sync/{code}/password` |
@@ -210,6 +220,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 6. Senha - Verificar se Perfil tem Senha
 
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
+
 | Item | Valor |
 |------|-------|
 | **Endpoint** | `GET /api/sync/{code}/password` |
@@ -228,6 +240,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 ---
 
 ### 7. Perfis - Listar Todos os Perfis
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/profiles
 
 | Item | Valor |
 |------|-------|
@@ -266,6 +280,8 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 ---
 
 ### 8. Estatisticas - Obter Estatisticas Gerais
+
+URL: https://v0-personal-os-eng-soft-2.vercel.app/api/stats
 
 | Item | Valor |
 |------|-------|
