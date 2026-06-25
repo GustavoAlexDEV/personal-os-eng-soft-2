@@ -65,12 +65,6 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ## Rotas REST Implementadas
 
-### Base URL
-```
-https://v0-novas-rotas-banco.vercel.app/api
-```
-
----
 
 ### 1. Sincronizacao - Criar Novo Perfil
 
