@@ -70,6 +70,9 @@ Uma aplicação web que simula um sistema operacional pessoal com área de traba
 
 ### 1. Sincronizacao - Criar Novo Perfil
 
+![Tela de Criar/Sincronizar Perfil](docs/CriarSyncStats.png)
+
+
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync
 
 | Item | Valor |
@@ -103,6 +106,9 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync
 
 ### 2. Sincronizacao - Obter Perfil
 
+![Tela de Criar/Sincronizar Perfil](docs/CriarSyncStats.png)
+![Tela de Buscar Perfil](docs/Sync.png)
+
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 
 | Item | Valor |
@@ -128,6 +134,8 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 ---
 
 ### 3. Sincronizacao - Atualizar Perfil
+
+![Tela de Atualizar/Deletar Perfil](docs/DeleteVerSenhaAtualizar.png)
 
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 
@@ -163,6 +171,8 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]
 
 ### 4. Sincronizacao - Deletar Perfil
 
+![Tela de Atualizar/Deletar Perfil](docs/DeleteVerSenhaAtualizar.png)
+
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/delete
 
 | Item | Valor |
@@ -193,6 +203,9 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/delete
 
 ### 5. Senha - Definir Senha do Perfil
 
+![Tela de Definir Senha](docs/Senha.png)
+
+
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
 
 | Item | Valor |
@@ -222,6 +235,8 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
 
 ### 6. Senha - Verificar se Perfil tem Senha
 
+![Tela de Verificar Senha](docs/DeleteVerSenhaAtualizar.png)
+
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
 
 | Item | Valor |
@@ -242,6 +257,8 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/sync/[code]/password
 ---
 
 ### 7. Perfis - Listar Todos os Perfis
+
+![Tela de Listar Perfis](docs/ListarTodos.png)
 
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/profiles
 
@@ -282,6 +299,8 @@ URL: https://v0-personal-os-eng-soft-2.vercel.app/api/profiles
 ---
 
 ### 8. Estatisticas - Obter Estatisticas Gerais
+
+![Tela de Criar/Sincronizar Perfil](docs/CriarSyncStats.png)
 
 URL: https://v0-personal-os-eng-soft-2.vercel.app/api/stats
 
