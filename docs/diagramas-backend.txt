@@ -21,7 +21,7 @@ skinparam packageStyle rectangle
 skinparam linetype ortho
 
 ' ============================================================
-package "View (Camada de Servicos)" <<Cloud>> {
+package "View (Camada de Servicos)" <<Folder>> {
 
   class "POST /api/sync" as SyncRoute <<route>> {
     + POST(request) : Response
@@ -46,7 +46,7 @@ package "View (Camada de Servicos)" <<Cloud>> {
 }
 
 ' ============================================================
-package "Controller (Camada de Controle)" <<Rectangle>> {
+package "Controller (Camada de Controle)" <<Folder>> {
 
   abstract class IProfileController <<abstract>> {
     + {abstract} index(page, limit) : Promise
@@ -142,19 +142,19 @@ package "Model" <<Folder>> {
 ProfileController -up-|> IProfileController : extends
 ProfileDAO_Neon -up-|> IProfileDAO : extends
 
-Config ..> ProfileController : <<create>>
-Config ..> ProfileDAO_Neon : <<create>>
-ProfileController o--> IProfileDAO : injecao (dao)
+Config ....> ProfileController : <<create>>
+Config ....> ProfileDAO_Neon : <<create>>
+ProfileController o---> IProfileDAO : injecao (dao)
 
-SyncRoute ..> Config : usa profileController
-SyncCodeRoute ..> Config : usa profileController
-DeleteRoute ..> Config : usa profileController
-PasswordRoute ..> Config : usa profileController
-ProfilesRoute ..> Config : usa profileController
-StatsRoute ..> Config : usa profileController
+SyncRoute ....> Config : usa profileController
+SyncCodeRoute ....> Config : usa profileController
+DeleteRoute ....> Config : usa profileController
+PasswordRoute ....> Config : usa profileController
+ProfilesRoute ....> Config : usa profileController
+StatsRoute ....> Config : usa profileController
 
-ProfileDAO_Neon ..> Db : usa sql
-Db ..> SyncProfile : persiste em\n(sync_profiles)
+ProfileDAO_Neon ....> Db : usa sql
+Db ....> SyncProfile : persiste em\n(sync_profiles)
 
 @enduml
 
